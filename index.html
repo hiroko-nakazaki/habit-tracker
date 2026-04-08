@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>習慣トラッカー</title>
+
+<!-- PWA設定 -->
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="apple-mobile-web-app-title" content="習慣トラッカー"/>
+<meta name="theme-color" content="#ededed"/>
+
+<!-- PWAアイコン（SVGをBase64にしたもの） -->
+<link rel="apple-touch-icon" href="icon.png"/>
+<link rel="icon" href="icon.png"/>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet"/>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#ededed;--bg2:#e3e3e3;--bg3:#d8d8d8;
+  --card:#f5f5f5;
+  --txt:#262626;--txt2:#666;--txt3:#999;
+  --border:#d0d0d0;
+  --lime:#b8f000;--pink:#ff3d9a;--sky:#00c2ff;
+  --orange:#ff6b2b;--purple:#7c3dff;--yellow:#ffd100;
+}
+html,body{height:100%;background:var(--bg);overflow:hidden;}
+body{font-family:'Noto Sans JP',sans-serif;color:var(--txt);}
+
+.app{
+  max-width:430px;
+  margin:0 auto;
+  height:100dvh;
+  display:flex;
+  flex-direction:column;
+  background:var(--bg);
+  position:relative;
+  overflow:hidden;
+}
+
+/* ヘッダー */
+.header{
+  background:var(--card);
+  border-bottom:1.5px solid var(--border);
+  padding:env(safe-area-inset-top, 14px) 16px 10px;
+  padding-top:max(env(safe-area-inset-top), 14px);
+  flex-shrink:0;
+  z-index:10;
+}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.logo{display:flex;align-items:center;gap:9px;}
+.logo-txt{font-size:12px;font-weight:900;letter-spacing:.12em;color:var(--txt);text-transform:uppercase;}
+.logo-sub{font-size:9px;color:var(--txt2);letter-spacing:.1em;margin-top:1px;}
+.tabs{display:flex;gap:3px;}
+.tab{
+  font-family:'Noto Sans JP',sans-serif;
+  background:none;border:1.5px solid var(--border);border-radius:4px;
+  padding:5px 10px;font-size:10px;font-weight:700;letter-spacing:.08em;
+  cursor:pointer;color:var(--txt2);text-transform:uppercase;
+}
+.tab.on{background:var(--txt);border-color:var(--txt);color:var(--bg);}
+.date-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+.nav-btn{
+  background:none;border:1.5px solid var(--border);border-radius:4px;
+  width:28px;height:28px;cursor:pointer;color:var(--txt2);font-size:16px;
+  display:flex;align-items:center;justify-content:center;
+}
+.date-txt{flex:1;text-align:center;font-size:12px;font-weight:700;color:var(--txt);letter-spacing:.05em;}
+.prog-wrap{display:flex;align-items:center;gap:8px;}
+.prog-label{font-size:9px;font-weight:900;color:var(--txt2);letter-spacing:.12em;}
+.prog-track{flex:1;background:var(--bg3);border-radius:99px;height:7px;overflow:hidden;}
+.prog-fill{height:100%;background:var(--lime);transition:width .4s;border-radius:99px;position:relative;}
+.prog-fill::after{content:'';position:absolute;right:0;top:0;bottom:0;width:6px;background:var(--pink);border-radius:99px;}
+.prog-pct{font-size:12px;font-weight:900;color:var(--txt);min-width:34px;text-align:right;}
+
+/* スクロールエリア */
+.scroll-area{
+  flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+}
+.content{padding:12px 14px 100px;}
+
+/* タイムブロック */
+.time-block{margin-bottom:14px;}
+.time-hdr{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.time-badge{font-size:9px;font-weight:900;letter-spacing:.14em;padding:3px 9px;border-radius:3px;text-transform:uppercase;}
+.time-badge.morning{background:var(--yellow);color:#262626;}
+.time-badge.noon{background:var(--sky);color:#fff;}
+.time-badge.night{background:var(--purple);color:#fff;}
+.time-illust{width:34px;height:34px;flex-shrink:0;}
+
+/* タスクカード */
+.task-card{
+  background:var(--card);border:1.5px solid var(--border);border-radius:10px;
+  padding:12px 12px;margin-bottom:5px;
+  display:flex;align-items:center;gap:10px;cursor:pointer;
+  transition:background .12s;
+  user-select:none;
+}
+.task-card:active{background:#e8e8e8;}
+.task-card.done{opacity:.4;}
+.task-card.done .tname{text-decoration:line-through;}
+.chk{
+  width:24px;height:24px;border-radius:50%;border:2px solid var(--border);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  transition:all .15s;background:transparent;
+}
+.chk.on{background:var(--lime);border-color:var(--lime);}
+.chk svg{display:none;}
+.chk.on svg{display:block;}
+.tname{font-size:14px;font-weight:500;color:var(--txt);flex:1;line-height:1.4;}
+.ttag{font-size:11px;color:var(--txt3);white-space:nowrap;font-weight:400;}
+.del-btn{
+  background:none;border:none;cursor:pointer;color:var(--txt3);
+  font-size:14px;padding:4px 6px;opacity:.5;
+}
+
+/* 全達成バナー */
+.all-done-banner{
+  border:2.5px solid var(--lime);
+  background:linear-gradient(135deg,#f7ffe0 0%,#fff0f8 100%);
+  border-radius:12px;padding:14px 16px;margin-bottom:14px;
+  display:flex;align-items:center;gap:12px;
+}
+.all-done-txt{font-size:13px;font-weight:900;color:var(--txt);letter-spacing:.06em;}
+.all-done-sub{font-size:10px;color:var(--txt2);margin-top:2px;}
+
+/* 日記 */
+.section-label{
+  font-size:9px;font-weight:900;letter-spacing:.16em;color:var(--txt2);
+  text-transform:uppercase;margin-bottom:7px;
+  display:flex;align-items:center;gap:6px;
+}
+.section-label::after{content:'';flex:1;height:1.5px;background:var(--border);}
+.diary-box{background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:12px;}
+.diary-ta{
+  width:100%;border:none;outline:none;resize:none;
+  font-size:14px;font-family:'Noto Sans JP',sans-serif;
+  color:var(--txt);background:transparent;min-height:90px;line-height:1.8;
+}
+.diary-ta::placeholder{color:var(--txt3);}
+.diary-save{
+  font-family:'Noto Sans JP',sans-serif;background:var(--txt);border:none;
+  color:var(--bg);border-radius:4px;padding:7px 14px;
+  font-size:11px;font-weight:700;cursor:pointer;margin-top:8px;letter-spacing:.06em;
+}
+
+/* FABボタン */
+.fab-wrap{
+  position:absolute;
+  bottom:0;left:0;right:0;
+  padding:12px 16px;
+  padding-bottom:max(env(safe-area-inset-bottom), 16px);
+  background:linear-gradient(to top, var(--bg) 70%, transparent);
+  text-align:right;
+  pointer-events:none;
+}
+.fab{
+  font-family:'Noto Sans JP',sans-serif;
+  background:var(--txt);color:var(--bg);border:none;
+  border-radius:99px;padding:13px 22px;
+  font-size:13px;font-weight:900;cursor:pointer;letter-spacing:.08em;
+  pointer-events:all;
+  box-shadow:0 4px 16px rgba(0,0,0,.18);
+}
+
+/* カレンダー */
+.cal-wrap{background:var(--card);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;}
+.cal-dow{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1.5px solid var(--border);}
+.cal-dow span{text-align:center;font-size:10px;font-weight:700;color:var(--txt2);padding:8px 0;letter-spacing:.04em;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);}
+.cal-cell{
+  aspect-ratio:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  border-bottom:1px solid var(--border);border-right:1px solid var(--border);
+  cursor:pointer;gap:2px;
+}
+.cal-cell:nth-child(7n){border-right:none;}
+.cal-cell:active{background:var(--bg2);}
+.cal-num{font-size:12px;color:var(--txt);}
+.cal-cell.today .cal-num{
+  background:var(--txt);color:var(--bg);border-radius:50%;
+  width:22px;height:22px;display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:900;
+}
+.cal-cell.other .cal-num{color:var(--txt3);}
+.cal-stamp{font-size:14px;line-height:1;}
+.cal-dot{width:5px;height:5px;border-radius:50%;background:var(--orange);}
+
+/* 履歴 */
+.hist-item{
+  background:var(--card);border:1.5px solid var(--border);border-radius:10px;
+  padding:12px 13px;margin-bottom:6px;
+  display:flex;align-items:center;gap:10px;cursor:pointer;
+}
+.hist-item:active{background:#e8e8e8;}
+.hist-date{font-size:14px;font-weight:700;color:var(--txt);}
+.hist-sub{font-size:11px;color:var(--txt2);margin-top:1px;}
+.hist-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.hist-pct{font-size:14px;font-weight:900;color:var(--txt);}
+
+/* モーダル */
+.modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);
+  z-index:200;align-items:flex-end;justify-content:center;
+}
+.modal-overlay.open{display:flex;}
+.modal-box{
+  background:var(--card);border:1.5px solid var(--border);
+  border-radius:20px 20px 0 0;padding:20px 16px;
+  padding-bottom:max(env(safe-area-inset-bottom), 20px);
+  width:100%;max-width:430px;
+}
+.modal-ttl{font-size:11px;font-weight:900;letter-spacing:.14em;color:var(--txt2);text-transform:uppercase;margin-bottom:14px;}
+.modal-box input,.modal-box select{
+  font-family:'Noto Sans JP',sans-serif;width:100%;
+  background:var(--bg);border:1.5px solid var(--border);border-radius:8px;
+  padding:12px;font-size:14px;color:var(--txt);margin-bottom:8px;outline:none;
+  -webkit-appearance:none;
+}
+.modal-box select{background-image:none;}
+.modal-btns{display:flex;gap:8px;margin-top:4px;}
+.modal-btns button{
+  font-family:'Noto Sans JP',sans-serif;flex:1;padding:12px;
+  border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;
+  border:1.5px solid var(--border);background:var(--bg);color:var(--txt2);
+}
+.modal-btns .ok{background:var(--txt);border-color:var(--txt);color:var(--bg);}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="hdr-top">
+      <div class="logo">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="8" fill="#262626"/>
+          <circle cx="16" cy="14" r="6.5" fill="#b8f000"/>
+          <circle cx="13.5" cy="12.2" r="1.3" fill="#262626"/>
+          <circle cx="18.5" cy="12.2" r="1.3" fill="#262626"/>
+          <circle cx="13.8" cy="12.5" r=".5" fill="#b8f000"/>
+          <circle cx="19" cy="12.5" r=".4" fill="#b8f000"/>
+          <path d="M13.5 16 Q16 17.8 18.5 16" stroke="#262626" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+          <ellipse cx="16" cy="23.5" rx="5.5" ry="4.2" fill="#ff3d9a"/>
+          <ellipse cx="10.8" cy="23.8" rx="3.2" ry="2.5" fill="#ff3d9a"/>
+          <ellipse cx="21.2" cy="23.8" rx="3.2" ry="2.5" fill="#ff3d9a"/>
+          <circle cx="10" cy="9" r="1.5" fill="#ffd100"/>
+          <circle cx="22" cy="8" r="1" fill="#00c2ff"/>
+        </svg>
+        <div>
+          <div class="logo-txt">習慣トラッカー</div>
+          <div class="logo-sub">DAILY HABIT LOG</div>
+        </div>
+      </div>
+      <div class="tabs">
+        <button class="tab on" onclick="switchView('today')">TODAY</button>
+        <button class="tab" onclick="switchView('calendar')">CAL</button>
+        <button class="tab" onclick="switchView('history')">LOG</button>
+      </div>
+    </div>
+    <div id="hdr-today">
+      <div class="date-row">
+        <button class="nav-btn" onclick="changeDay(-1)">‹</button>
+        <span class="date-txt" id="date-lbl"></span>
+        <button class="nav-btn" onclick="changeDay(1)">›</button>
+      </div>
+      <div class="prog-wrap">
+        <span class="prog-label">PROGRESS</span>
+        <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+        <span class="prog-pct" id="prog-pct">0%</span>
+      </div>
+    </div>
+    <div id="hdr-cal" style="display:none">
+      <div class="date-row" style="margin-bottom:0">
+        <button class="nav-btn" onclick="changeMonth(-1)">‹</button>
+        <span class="date-txt" id="cal-lbl"></span>
+        <button class="nav-btn" onclick="changeMonth(1)">›</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-area">
+    <div class="content" id="content"></div>
+  </div>
+
+  <div class="fab-wrap" id="fab-wrap">
+    <button class="fab" onclick="openModal()">＋ タスクを追加</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal-box">
+    <div class="modal-ttl">ADD NEW TASK</div>
+    <input id="m-name" placeholder="タスク名"/>
+    <select id="m-time">
+      <option value="morning">☀ 朝 — MORNING</option>
+      <option value="noon">☁ 昼 — NOON</option>
+      <option value="night">★ 夜 — NIGHT</option>
+    </select>
+    <input id="m-tag" placeholder="カテゴリー（例：読書・運動）"/>
+    <div class="modal-btns">
+      <button onclick="closeModal()">CANCEL</button>
+      <button class="ok" onclick="addTask()">ADD →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TIMES = ['morning','noon','night'];
+const TIME_META = {
+  morning: { label:'MORNING', cls:'morning', svg:`<svg class="time-illust" viewBox="0 0 34 34" fill="none"><rect width="34" height="34" rx="9" fill="#fff7c2"/><circle cx="17" cy="15" r="6" fill="#ffd100"/><circle cx="14.8" cy="13.2" r="1.1" fill="#262626"/><circle cx="19.2" cy="13.2" r="1.1" fill="#262626"/><path d="M15 16.5 Q17 18 19 16.5" stroke="#262626" stroke-width="1" stroke-linecap="round" fill="none"/><path d="M17 6v-2M17 24v2M7 15H5M29 15h-2M9.3 9.3 7.9 7.9M26.1 7.9l-1.4 1.4M9.3 20.7 7.9 22.1M26.1 22.1l-1.4-1.4" stroke="#ffd100" stroke-width="1.5" stroke-linecap="round"/><circle cx="27" cy="8" r="1.2" fill="#ff6b2b"/><circle cx="8" cy="22" r=".8" fill="#ff3d9a"/></svg>` },
+  noon:    { label:'NOON',    cls:'noon',    svg:`<svg class="time-illust" viewBox="0 0 34 34" fill="none"><rect width="34" height="34" rx="9" fill="#d8f5ff"/><ellipse cx="22" cy="14" rx="8.5" ry="6" fill="#fff"/><ellipse cx="14" cy="16" rx="9" ry="6.5" fill="#00c2ff"/><ellipse cx="11" cy="19" rx="5.5" ry="4" fill="#fff" opacity=".5"/><circle cx="14" cy="9" r="2" fill="#ffd100"/><circle cx="25" cy="10" r="1.2" fill="#b8f000"/><circle cx="7" cy="18" r="1" fill="#ff3d9a"/></svg>` },
+  night:   { label:'NIGHT',   cls:'night',   svg:`<svg class="time-illust" viewBox="0 0 34 34" fill="none"><rect width="34" height="34" rx="9" fill="#1a0a3a"/><path d="M22 7 Q14 9 13 17 Q12 24 19 26 Q10 27 7 20 Q4 13 10 7 Q14 3 22 7Z" fill="#7c3dff"/><circle cx="25" cy="10" r="1.8" fill="#ffd100"/><circle cx="27" cy="18" r="1.1" fill="#fff" opacity=".7"/><circle cx="23" cy="22" r=".8" fill="#00c2ff"/><circle cx="29" cy="14" r=".7" fill="#ff3d9a"/><circle cx="26" cy="25" r=".5" fill="#b8f000"/></svg>` }
+};
+const STAMPS = ['⭐','💥','🎯','🔥','🌈','💫','🎊','🏆'];
+
+let tasks = JSON.parse(localStorage.getItem('ht_tasks') || 'null') || [
+  {id:1,name:'英語のポッドキャスト',time:'morning',tag:'インプット'},
+  {id:2,name:'10分間読書',time:'morning',tag:'読書'},
+  {id:3,name:'ストレッチ15分',time:'noon',tag:'運動'},
+  {id:4,name:'技術記事を読む',time:'noon',tag:'インプット'},
+  {id:5,name:'日記を書く',time:'night',tag:'習慣'},
+  {id:6,name:'瞑想10分',time:'night',tag:'運動'},
+];
+let nid = Math.max(...tasks.map(t=>t.id), 0) + 1;
+let view = 'today', cur = new Date(), calY = cur.getFullYear(), calM = cur.getMonth();
+
+function saveTasks() { localStorage.setItem('ht_tasks', JSON.stringify(tasks)); }
+function dk(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function st(k){ try{ return JSON.parse(localStorage.getItem('ht_'+k)||'{}'); }catch{ return {}; } }
+function sv(k,v){ try{ localStorage.setItem('ht_'+k, JSON.stringify(v)); }catch{} }
+function getChk(ds){ return st('chk')[ds]||{}; }
+function toggle(id){
+  let ds=dk(cur), all=st('chk');
+  if(!all[ds]) all[ds]={};
+  all[ds][id]=!all[ds][id];
+  sv('chk',all); render();
+}
+function prog(ds){
+  let c=getChk(ds), tot=tasks.length;
+  if(!tot) return {done:0,tot:0,pct:0};
+  let done=tasks.filter(t=>c[t.id]).length;
+  return {done,tot,pct:Math.round(done/tot*100)};
+}
+function allDone(ds){ let p=prog(ds); return p.tot>0&&p.done===p.tot; }
+function stamp(ds){ let n=0; for(let c of ds) n+=c.charCodeAt(0); return STAMPS[n%STAMPS.length]; }
+function fmtDate(d){
+  const dw=['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${dw[d.getDay()]}`;
+}
+
+function switchView(v){
+  view=v;
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('on',['today','calendar','history'][i]===v));
+  document.getElementById('hdr-today').style.display = v==='today'?'':'none';
+  document.getElementById('hdr-cal').style.display = v==='calendar'?'':'none';
+  document.getElementById('fab-wrap').style.display = v==='today'?'':'none';
+  render();
+}
+function changeDay(d){ cur=new Date(cur); cur.setDate(cur.getDate()+d); render(); }
+function changeMonth(d){
+  calM+=d;
+  if(calM>11){calM=0;calY++;}
+  if(calM<0){calM=11;calY--;}
+  render();
+}
+
+function render(){
+  let ds=dk(cur);
+  document.getElementById('date-lbl').textContent=fmtDate(cur);
+  let {done,tot,pct}=prog(ds);
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-pct').textContent=pct+'%';
+  let el=document.getElementById('content');
+
+  if(view==='today'){
+    let chk=getChk(ds), html='';
+    if(allDone(ds)){
+      html+=`<div class="all-done-banner">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <rect width="48" height="48" rx="12" fill="#b8f000"/>
+          <circle cx="24" cy="20" r="9" fill="#262626"/>
+          <circle cx="20.8" cy="17.5" r="1.6" fill="#b8f000"/>
+          <circle cx="27.2" cy="17.5" r="1.6" fill="#b8f000"/>
+          <path d="M21 22 Q24 24.5 27 22" stroke="#b8f000" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+          <ellipse cx="24" cy="34" rx="7.5" ry="5.5" fill="#ff3d9a"/>
+          <ellipse cx="16.5" cy="34.5" rx="4.2" ry="3.2" fill="#ff3d9a"/>
+          <ellipse cx="31.5" cy="34.5" rx="4.2" ry="3.2" fill="#ff3d9a"/>
+          <circle cx="12" cy="12" r="2.5" fill="#ffd100"/>
+          <circle cx="37" cy="10" r="1.8" fill="#00c2ff"/>
+        </svg>
+        <div>
+          <div class="all-done-txt">MISSION COMPLETE!</div>
+          <div class="all-done-sub">全タスク達成！最高の一日！</div>
+        </div>
+      </div>`;
+    }
+    TIMES.forEach(time=>{
+      let tl=tasks.filter(t=>t.time===time); if(!tl.length) return;
+      let m=TIME_META[time];
+      html+=`<div class="time-block"><div class="time-hdr">${m.svg}<span class="time-badge ${time}">${m.label}</span></div>`;
+      tl.forEach(t=>{
+        let on=!!chk[t.id];
+        html+=`<div class="task-card ${on?'done':''}" onclick="toggle(${t.id})">
+          <div class="chk ${on?'on':''}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="#262626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="tname">${t.name}</span>
+          ${t.tag?`<span class="ttag"># ${t.tag}</span>`:''}
+          <button class="del-btn" onclick="event.stopPropagation();delTask(${t.id})">✕</button>
+        </div>`;
+      });
+      html+=`</div>`;
+    });
+    let diary=st('diary')[ds]||'';
+    html+=`<div style="margin-top:4px;"><div class="section-label">DIARY</div>
+      <div class="diary-box">
+        <textarea class="diary-ta" id="diary-ta" placeholder="今日の振り返りを書いてみよう...">${diary}</textarea>
+        <button class="diary-save" onclick="saveDiary()">SAVE →</button>
+      </div>
+    </div>`;
+    el.innerHTML=html;
+
+  } else if(view==='calendar'){
+    document.getElementById('cal-lbl').textContent=`${calY} / ${String(calM+1).padStart(2,'0')}`;
+    let first=new Date(calY,calM,1).getDay(), days=new Date(calY,calM+1,0).getDate(), prev=new Date(calY,calM,0).getDate();
+    let today=dk(new Date());
+    let html=`<div class="cal-wrap"><div class="cal-dow">`;
+    ['SUN','MON','TUE','WED','THU','FRI','SAT'].forEach(d=>html+=`<span>${d}</span>`);
+    html+=`</div><div class="cal-grid">`;
+    for(let i=0;i<first;i++) html+=`<div class="cal-cell other"><span class="cal-num">${prev-first+1+i}</span></div>`;
+    for(let d=1;d<=days;d++){
+      let dk2=`${calY}-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      let isT=dk2===today, ad=allDone(dk2), pp=prog(dk2);
+      html+=`<div class="cal-cell ${isT?'today':''}" onclick="goDay(${calY},${calM},${d})">
+        <span class="cal-num">${d}</span>
+        ${ad?`<span class="cal-stamp">${stamp(dk2)}</span>`:pp.done>0?`<span class="cal-dot"></span>`:''}
+      </div>`;
+    }
+    let rem=42-first-days;
+    for(let i=1;i<=rem;i++) html+=`<div class="cal-cell other"><span class="cal-num">${i}</span></div>`;
+    html+=`</div></div>
+    <div style="margin-top:10px;font-size:10px;color:#666;display:flex;gap:12px;letter-spacing:.08em;font-weight:700;">
+      <span>★ ALL DONE</span>
+      <span style="display:flex;align-items:center;gap:4px;"><span style="width:5px;height:5px;border-radius:50%;background:#ff6b2b;display:inline-block"></span>PARTIAL</span>
+    </div>`;
+    el.innerHTML=html;
+
+  } else {
+    let all=st('chk'), dates=Object.keys(all).sort((a,b)=>b.localeCompare(a));
+    if(!dates.length){ el.innerHTML=`<div style="text-align:center;padding:48px 0;color:#999;font-size:12px;font-weight:700;letter-spacing:.1em;">NO RECORDS YET</div>`; return; }
+    let html='';
+    const accent=['#b8f000','#ff3d9a','#00c2ff','#ffd100','#7c3dff','#ff6b2b'];
+    dates.forEach((dk2,i)=>{
+      let p=prog(dk2); if(!p.tot) return;
+      let d=new Date(dk2+'T00:00:00'), sp=allDone(dk2)?stamp(dk2):'';
+      const ac=accent[i%accent.length];
+      html+=`<div class="hist-item" onclick="goDay(${d.getFullYear()},${d.getMonth()},${d.getDate()})">
+        <div style="width:4px;align-self:stretch;border-radius:2px;background:${ac};flex-shrink:0;"></div>
+        <div>
+          <div class="hist-date">${d.getMonth()+1}/${d.getDate()}</div>
+          <div class="hist-sub">${p.done}/${p.tot} TASKS</div>
+        </div>
+        <div class="hist-right">
+          <span class="hist-pct">${p.pct}%</span>
+          ${sp?`<span style="font-size:18px">${sp}</span>`:''}
+        </div>
+      </div>`;
+    });
+    el.innerHTML=html||`<div style="text-align:center;padding:48px 0;color:#999;font-size:12px;font-weight:700;">NO RECORDS YET</div>`;
+  }
+}
+
+function saveDiary(){
+  let ta=document.getElementById('diary-ta'); if(!ta) return;
+  let d=st('diary'); d[dk(cur)]=ta.value; sv('diary',d);
+  let b=document.querySelector('.diary-save');
+  if(b){ b.textContent='SAVED ✓'; setTimeout(()=>{ if(b) b.textContent='SAVE →'; },1500); }
+}
+function goDay(y,m,d){ cur=new Date(y,m,d); switchView('today'); }
+function openModal(){
+  document.getElementById('modal').classList.add('open');
+  setTimeout(()=>document.getElementById('m-name').focus(), 100);
+}
+function closeModal(){
+  document.getElementById('modal').classList.remove('open');
+  document.getElementById('m-name').value='';
+  document.getElementById('m-tag').value='';
+}
+function addTask(){
+  let name=document.getElementById('m-name').value.trim(); if(!name) return;
+  let time=document.getElementById('m-time').value, tag=document.getElementById('m-tag').value.trim();
+  tasks.push({id:nid++,name,time,tag});
+  saveTasks(); closeModal(); render();
+}
+function delTask(id){
+  tasks=tasks.filter(t=>t.id!==id);
+  saveTasks(); render();
+}
+
+// モーダル外タップで閉じる
+document.getElementById('modal').addEventListener('click', function(e){
+  if(e.target===this) closeModal();
+});
+
+render();
+</script>
+</body>
+</html>
